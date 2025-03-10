@@ -8,8 +8,18 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 
 ## Características
 
-- Recopilación automatizada de enlaces mediante scraping.
-- Organización y almacenamiento de URLs en un formato accesible.
+- Recopilación automatizada de enlaces mediante scraping. (No liberado)
+- Backups scrapeados:
+   Nintendo Game Cube
+   Nintendo Wii
+   Nintendo Wii U
+   Sony Play Station
+   Sony Play Station 2
+   Sony Play Station 3
+   Sony Play Station Portable
+   Microsoft XBOX
+   Microsoft XBOX 360
+- Organización y almacenamiento de URLs en un formato accesible. (Liberado)
 - Actualizaciones periódicas para mantener la relevancia de los enlaces.
 
 ## Tecnologías Utilizadas
