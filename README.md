@@ -26,7 +26,7 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 
 - **Lenguaje de Programación:** Python 3.12.5
 - **Herramientas de Scraping:** [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/), [Scrapy](https://scrapy.org/), [Selenium](https://www.selenium.dev/)
-- **Otras Tecnologías:** [Menciona otras herramientas o bibliotecas relevantes]
+- **Otras Tecnologías:** Tk, TTKbootstrap
 
 ## Instalación
 
