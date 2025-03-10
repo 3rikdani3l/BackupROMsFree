@@ -31,7 +31,7 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 ## Instalación
 
 1. Clona este repositorio:
-   git clone https://github.com/tu_usuario/tu_repositorio.git
+   git clone https://github.com/3rikdani3l/BackupROMsFree.git
 3. Instala las dependencias necesarias:
    pip install -r requirements.txt
 5. Ejecuta la aplicación:
