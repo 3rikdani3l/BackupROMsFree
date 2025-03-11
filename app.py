@@ -15,7 +15,15 @@ from cryptography.fernet import Fernet
 from PIL import Image, ImageTk, ImageOps  # Para manejar imágenes
 
 # Configuración
-PAGE_SIZE = 30  # Número de elementos por página
+#PAGE_SIZE = 30  # Número de elementos por página
+# Función auxiliar para centrar una ventana en la pantalla
+def center_window(win, width, height):
+    win.update_idletasks()
+    screen_width = win.winfo_screenwidth()
+    screen_height = win.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    win.geometry(f"{width}x{height}+{x}+{y}")
 
 # Clave secreta (la misma que en el API)
 SECRET_KEY = b'LuNo7QH0oR3w9r3U9ZRCQ67UysCxg61Oa6HavzdSE1E='
@@ -65,10 +73,6 @@ def adjust_server_url(url: str, server: str) -> str:
         return url
 
 def get_theme_from_settings() -> str:
-    """
-    Consulta la base de datos para obtener el tema actual desde el campo theme
-    de la tabla settings. Si no se encuentra o hay error, se retorna 'flatly'.
-    """
     try:
         conn = sqlite3.connect("data/data.db")
         cursor = conn.cursor()
@@ -81,72 +85,77 @@ def get_theme_from_settings() -> str:
         pass
     return "flatly"
 
-# Se consulta el tema antes de crear la ventana principal.
+def get_page_size() -> int:
+    try:
+        conn = sqlite3.connect("data/data.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT page FROM settings LIMIT 1")
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            return int(row[0])
+    except Exception as e:
+        pass
+    return 30
+
 current_theme = get_theme_from_settings()
 
 class Application(ttk.Window):
     def __init__(self):
-        # Usamos el tema obtenido de la configuración (por defecto "flatly")
         super().__init__(themename=current_theme)
         self.title("Backup ROMs Free")
         self.geometry("900x600")
-        self.resizable(False, False)
-        # Agregamos un icono a la ventana principal (asegúrate de tener "icon.png")
+        center_window(self, 900, 600)
+        self.resizable(True, True)
         try:
             self.iconphoto(False, tk.PhotoImage(file="icon.png"))
         except Exception as e:
             pass
-                
-        # Ruta de descarga (por defecto, carpeta actual + "download")
+
         self.download_path = os.path.join(os.getcwd(), "download")
         print(self.download_path)
-        
-        # Cargar valores para los combos desde la base de datos
+
         consoles = self.load_consoles()
         regions = self.load_regions()
-        
-        # Variables para consola (tipo), búsqueda y región (por defecto "Todos")
+
         self.system = tk.StringVar(value="Todos")
         self.search_term = tk.StringVar()
         self.region = tk.StringVar(value="Todos")
-        
-        # Menú: Ahora agregamos dos opciones: Configuraciones y Actualizar BD
+        self.page_size = get_page_size()
+
         menubar = tk.Menu(self)
         menubar.add_command(label="Configuraciones", command=self.open_settings_window)
-        #menubar.add_command(label="Actualizar BD", command=self.open_crud_window)
+        menubar.add_command(label="Actualizar BD", command=self.update_database)
         self.config(menu=menubar)
-        
-        # Frame superior: selección de consola, búsqueda y filtro por región
+
         top_frame = ttk.Frame(self)
         top_frame.pack(pady=5, padx=10, fill=tk.X)
-        
+
         ttk.Label(top_frame, text="Consola:").pack(side=tk.LEFT)
-        system_menu = ttk.Combobox(top_frame, textvariable=self.system, state="readonly", 
+        system_menu = ttk.Combobox(top_frame, textvariable=self.system, state="readonly",
                                    values=consoles, width=20)
         system_menu.pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Label(top_frame, text="Región:").pack(side=tk.LEFT, padx=10)
-        region_combo = ttk.Combobox(top_frame, textvariable=self.region, state="readonly", 
+        region_combo = ttk.Combobox(top_frame, textvariable=self.region, state="readonly",
                                     values=regions, width=15)
         region_combo.pack(side=tk.LEFT, padx=5)
-        
+
         ttk.Label(top_frame, text="Buscar por nombre:").pack(side=tk.LEFT, padx=10)
         search_entry = ttk.Entry(top_frame, textvariable=self.search_term, width=31)
         search_entry.pack(side=tk.LEFT, padx=5)
-        
+
         search_btn = ttk.Button(top_frame, text="Buscar", command=self.fetch_data)
         search_btn.pack(side=tk.LEFT, padx=5)
-        
+
         refresh_btn = ttk.Button(top_frame, text="Refrescar", command=self.reset_search)
         refresh_btn.pack(side=tk.LEFT, padx=0)
-        
-        # Variables de paginación y datos
+
         self.current_page = 1
         self.all_files = []
-        
-        # Diccionarios para almacenar imágenes PIL y PhotoImage para las banderas (región)
+
         self.region_pil = {}
-        self.images = {}  # PhotoImage de región
+        self.images = {}
         try:
             desired_size = (25, 15)
             for key, filename in {
@@ -174,8 +183,7 @@ class Application(ttk.Window):
                 self.images[key] = ImageTk.PhotoImage(pil_img)
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar las imágenes de región: {e}")
-        
-        # Imágenes del servidor
+
         self.server_pil = {}
         self.server_images = {}
         try:
@@ -188,27 +196,30 @@ class Application(ttk.Window):
             self.server_images["otros"] = ImageTk.PhotoImage(pil_other)
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar las imágenes del servidor: {e}")
-        
+
         self.composite_images = {}
-        
-        # Configurar el Treeview.
+
+        tree_frame = ttk.Frame(self)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         columns = ("Servidor", "Name", "Size", "Download")
-        self.tree = ttk.Treeview(self, columns=columns, show="tree headings")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="tree headings")
         self.tree.heading("#0", text="Región")
         self.tree.heading("Servidor", text="Servidor")
         self.tree.heading("Name", text="Nombre")
         self.tree.heading("Size", text="Tamaño")
         self.tree.heading("Download", text="Descargar")
-        
         self.tree.column("#0", width=60)
         self.tree.column("Servidor", width=60)
         self.tree.column("Name", width=350)
         self.tree.column("Size", width=100)
         self.tree.column("Download", width=50)
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
         self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
-        
+
         pagination_frame = ttk.Frame(self)
         pagination_frame.pack(pady=5)
         self.prev_btn = ttk.Button(pagination_frame, text="Anterior", command=self.prev_page)
@@ -217,11 +228,11 @@ class Application(ttk.Window):
         self.page_info_label.pack(side=tk.LEFT, padx=5)
         self.next_btn = ttk.Button(pagination_frame, text="Siguiente", command=self.next_page)
         self.next_btn.pack(side=tk.LEFT, padx=5)
-        
+
         self.item_url_mapping = {}
-        
+
         self.fetch_data()
-    
+
     def load_consoles(self):
         try:
             conn = sqlite3.connect("data/data.db")
@@ -236,7 +247,7 @@ class Application(ttk.Window):
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar consolas: {e}")
             return ["Todos"]
-    
+
     def load_regions(self):
         try:
             conn = sqlite3.connect("data/data.db")
@@ -266,18 +277,19 @@ class Application(ttk.Window):
         settings_win = tk.Toplevel(self)
         settings_win.title("Configuraciones")
         settings_win.geometry("400x300")
+        center_window(settings_win, 400, 300)
         settings_win.resizable(False, False)
         try:
             settings_win.iconphoto(False, tk.PhotoImage(file="icon.png"))
         except Exception as e:
             pass
-        
+
         unzip_var = tk.BooleanVar()
         decryp_var = tk.BooleanVar()
         path_var = tk.StringVar()
         theme_var = tk.StringVar()
         theme_options = ["flatly", "litera", "darkly", "journal", "cyborg", "superhero", "minty", "pulse", "simplex", "vapor"]
-        
+
         settings = self.load_settings()
         if settings is None:
             settings = {"unzip": "N", "path": os.path.join(os.getcwd(), "download"), "decryp": "N", "theme": "flatly"}
@@ -285,30 +297,29 @@ class Application(ttk.Window):
         path_var.set(settings["path"])
         decryp_var.set(True if settings["decryp"].upper() == "S" else False)
         theme_var.set(settings.get("theme", "flatly"))
-        
+
         ttk.Label(settings_win, text="Descomprimir al finalizar la descarga:").pack(anchor=tk.W, padx=10, pady=5)
         ttk.Checkbutton(settings_win, variable=unzip_var).pack(anchor=tk.W, padx=20)
-        
+
         ttk.Label(settings_win, text="Ruta de descarga:").pack(anchor=tk.W, padx=10, pady=5)
         ttk.Entry(settings_win, textvariable=path_var, width=70).pack(anchor=tk.W, padx=20)
-        
+
         ttk.Label(settings_win, text="Encriptar:").pack(anchor=tk.W, padx=10, pady=5)
         ttk.Checkbutton(settings_win, variable=decryp_var).pack(anchor=tk.W, padx=20)
-        
+
         ttk.Label(settings_win, text="Tema:").pack(anchor=tk.W, padx=10, pady=5)
         ttk.Combobox(settings_win, textvariable=theme_var, values=theme_options, state="readonly", width=68).pack(anchor=tk.W, padx=20)
-        
+
         button_frame = ttk.Frame(settings_win)
         button_frame.pack(pady=30)
-        def save_settings():
-            unzip_val = "S" if unzip_var.get() else "N"
-            download_path = path_var.get().strip() if path_var.get().strip() != "" else os.path.join(os.getcwd(), "download")
-            decryp_val = "S" if decryp_var.get() else "N"
-            theme_val = theme_var.get()
-            self.update_settings(unzip_val, download_path, decryp_val, theme_val)
-            messagebox.showinfo("Configuraciones", "Configuración actualizada.")
+        ttk.Button(button_frame, text="Guardar", command=lambda: (
+            self.update_settings("S" if unzip_var.get() else "N",
+                                 path_var.get().strip() if path_var.get().strip() != "" else os.path.join(os.getcwd(), "download"),
+                                 "S" if decryp_var.get() else "N",
+                                 theme_var.get()),
+            messagebox.showinfo("Configuraciones", "Configuración actualizada."),
             settings_win.destroy()
-        ttk.Button(button_frame, text="Guardar", command=save_settings).pack(side=tk.LEFT, padx=10)
+        )).pack(side=tk.LEFT, padx=10)
         ttk.Button(button_frame, text="Cancelar", command=settings_win.destroy).pack(side=tk.LEFT, padx=10)
 
     def load_settings(self):
@@ -325,7 +336,7 @@ class Application(ttk.Window):
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar la configuración: {e}")
             return None
-    
+
     def update_settings(self, unzip, path, decryp, theme):
         try:
             conn = sqlite3.connect("data/data.db")
@@ -341,11 +352,75 @@ class Application(ttk.Window):
         except Exception as e:
             messagebox.showerror("Error", f"Error al actualizar la configuración: {e}")
 
+    def update_database(self):
+        db_url = "https://github.com/3rikdani3l/BackupROMsFree/raw/refs/heads/main/data/data.db"
+        data_folder = os.path.join(os.getcwd(), "data")
+        os.makedirs(data_folder, exist_ok=True)
+        destination = os.path.join(data_folder, "data.db")
+
+        download_win = tk.Toplevel(self)
+        download_win.title("Actualizando Base de Datos")
+        download_win.geometry("400x200")
+        center_window(download_win, 400, 200)
+        download_win.resizable(False, False)
+        try:
+            download_win.iconphoto(False, tk.PhotoImage(file="icon.png"))
+        except Exception as e:
+            pass
+
+        label_file = ttk.Label(download_win, text="Descargando Base de Datos")
+        label_file.pack(pady=5)
+
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(download_win, variable=progress_var, maximum=100)
+        progress_bar.pack(fill=tk.X, padx=20, pady=10)
+
+        label_speed = ttk.Label(download_win, text="Velocidad: 0 KB/s")
+        label_speed.pack(pady=5)
+
+        label_eta = ttk.Label(download_win, text="Tiempo restante: 0 s")
+        label_eta.pack(pady=5)
+
+        def update_progress(downloaded, total, speed, remaining):
+            percent = (downloaded / total) * 100 if total else 0
+            progress_var.set(percent)
+            label_speed.config(text=f"Velocidad: {speed/1024:.2f} KB/s")
+            label_eta.config(text=f"Tiempo restante: {int(remaining)} s")
+
+        def finish_download(success, info):
+            if success:
+                messagebox.showinfo("BD Actualizada", f"Base de datos actualizada en:\n{info}")
+            else:
+                messagebox.showerror("Error en actualización", f"Ocurrió un error:\n{info}")
+            download_win.destroy()
+
+        def perform_download():
+            try:
+                response = requests.get(db_url, stream=True)
+                total = int(response.headers.get("content-length", 0))
+                downloaded = 0
+                start_time = time.time()
+                chunk_size = 8192
+                with open(destination, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=chunk_size):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            elapsed = time.time() - start_time
+                            speed = downloaded / elapsed if elapsed > 0 else 0
+                            remaining = (total - downloaded) / speed if speed > 0 else 0
+                            download_win.after(0, update_progress, downloaded, total, speed, remaining)
+                download_win.after(0, finish_download, True, destination)
+            except Exception as e:
+                download_win.after(0, finish_download, False, str(e))
+
+        threading.Thread(target=perform_download, daemon=True).start()
+
     def fetch_data(self):
         system = self.system.get().lower()
         query = self.search_term.get().strip().lower()
         region_filter = self.region.get().lower()
-        
+
         try:
             conn = sqlite3.connect("data/data.db")
             cursor = conn.cursor()
@@ -374,21 +449,21 @@ class Application(ttk.Window):
         if region_key not in self.region_pil:
             region_key = "default"
         return self.images[region_key]
-    
+
     def display_page(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
-            
+
         total_items = len(self.all_files)
-        total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
+        total_pages = math.ceil(total_items / self.page_size) if total_items > 0 else 1
         if self.current_page < 1:
             self.current_page = 1
         elif self.current_page > total_pages:
             self.current_page = total_pages
-        
-        start_index = (self.current_page - 1) * PAGE_SIZE
-        end_index = start_index + PAGE_SIZE
-        
+
+        start_index = (self.current_page - 1) * self.page_size
+        end_index = start_index + self.page_size
+
         self.item_url_mapping = {}
         self.composite_images.clear()
         for file in self.all_files[start_index:end_index]:
@@ -399,7 +474,7 @@ class Application(ttk.Window):
             item_id = self.tree.insert("", tk.END, text="", image=comp_img,
                                        values=(server_value, name, size, "Download"))
             self.item_url_mapping[item_id] = {"url": url, "name": name, "encrypted": encrypted, "server": server_value}
-        
+
         self.page_info_label.config(text=f"Página {self.current_page} de {total_pages}")
         self.prev_btn.config(state=tk.DISABLED if self.current_page <= 1 else tk.NORMAL)
         self.next_btn.config(state=tk.DISABLED if self.current_page >= total_pages else tk.NORMAL)
@@ -422,33 +497,34 @@ class Application(ttk.Window):
         download_win = tk.Toplevel(self)
         download_win.title(f"Descargando: {file_name}")
         download_win.geometry("400x200")
+        center_window(download_win, 400, 200)
         download_win.resizable(False, False)
         try:
             download_win.iconphoto(False, tk.PhotoImage(file="icon.png"))
         except Exception as e:
             pass
-        
+
         label_file = ttk.Label(download_win, text=f"Archivo: {file_name}")
         label_file.pack(pady=5)
-        
+
         progress_var = tk.DoubleVar()
         progress_bar = ttk.Progressbar(download_win, variable=progress_var, maximum=100)
         progress_bar.pack(fill=tk.X, padx=20, pady=10)
-        
+
         label_speed = ttk.Label(download_win, text="Velocidad: 0 KB/s")
         label_speed.pack(pady=5)
-        
+
         label_eta = ttk.Label(download_win, text="Tiempo restante: 0 s")
         label_eta.pack(pady=5)
-        
+
         file_path = os.path.join(self.download_path, file_name)
-        
+
         def update_progress(downloaded, total, speed, remaining):
             percent = (downloaded / total) * 100 if total else 0
             progress_var.set(percent)
             label_speed.config(text=f"Velocidad: {speed/1024:.2f} KB/s")
             label_eta.config(text=f"Tiempo restante: {int(remaining)} s")
-        
+
         def finish_download(success, info):
             if success:
                 current_settings = self.load_settings()
@@ -465,7 +541,7 @@ class Application(ttk.Window):
             else:
                 messagebox.showerror("Error en descarga", f"Ocurrió un error:\n{info}")
             download_win.destroy()
-        
+
         def perform_download():
             try:
                 response = requests.get(url, stream=True)
@@ -485,12 +561,12 @@ class Application(ttk.Window):
                 download_win.after(0, finish_download, True, file_path)
             except Exception as e:
                 download_win.after(0, finish_download, False, str(e))
-        
+
         threading.Thread(target=perform_download, daemon=True).start()
 
     def next_page(self):
         total_items = len(self.all_files)
-        total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
+        total_pages = math.ceil(total_items / self.page_size) if total_items > 0 else 1
         if self.current_page < total_pages:
             self.current_page += 1
             self.display_page()
@@ -501,7 +577,6 @@ class Application(ttk.Window):
             self.display_page()
 
     def open_crud_window(self):
-        """Abre una ventana para insertar nuevos registros en la tabla files."""
         crud_win = tk.Toplevel(self)
         crud_win.title("Actualizar BD")
         crud_win.geometry("300x350")
@@ -511,23 +586,18 @@ class Application(ttk.Window):
         except Exception as e:
             pass
 
-        # Campos para insertar:
-        # Nombre (obligatorio)
         ttk.Label(crud_win, text="Nombre de la rom:").pack(anchor=tk.W, padx=10, pady=5)
         name_entry = ttk.Entry(crud_win, width=50)
         name_entry.pack(anchor=tk.W, padx=20)
-        
-        # Región (combo desde tabla region, default "Unknow")
+
         ttk.Label(crud_win, text="Región:").pack(anchor=tk.W, padx=10, pady=5)
         regions = self.load_regions()
-        # Forzar valor por defecto "Unknow"
         if "Unknow" not in regions:
             regions.insert(0, "Unknow")
         region_var = tk.StringVar(value="Unknow")
         region_combo = ttk.Combobox(crud_win, textvariable=region_var, values=regions, state="readonly", width=47)
         region_combo.pack(anchor=tk.W, padx=20)
-        
-        # Peso y Unidad
+
         weight_frame = ttk.Frame(crud_win)
         weight_frame.pack(anchor=tk.W, padx=20, pady=5)
         ttk.Label(weight_frame, text="Peso:").pack(side=tk.LEFT)
@@ -536,21 +606,18 @@ class Application(ttk.Window):
         unit_var = tk.StringVar(value="MiB")
         unit_combo = ttk.Combobox(weight_frame, textvariable=unit_var, values=["MiB", "GiB"], state="readonly", width=10)
         unit_combo.pack(side=tk.LEFT)
-        
-        # Consola (combo desde tabla console, default primer registro)
+
         ttk.Label(crud_win, text="Consola:").pack(anchor=tk.W, padx=10, pady=5)
         consoles = self.load_consoles()
         default_console = consoles[0] if consoles else ""
         console_var = tk.StringVar(value=default_console)
         console_combo = ttk.Combobox(crud_win, textvariable=console_var, values=consoles, state="readonly", width=47)
         console_combo.pack(anchor=tk.W, padx=20)
-        
-        # URL (obligatorio)
+
         ttk.Label(crud_win, text="URL:").pack(anchor=tk.W, padx=10, pady=5)
         url_entry = ttk.Entry(crud_win, width=50)
         url_entry.pack(anchor=tk.W, padx=20)
-        
-        # Botón Insertar
+
         def insert_record():
             name = name_entry.get().strip()
             region = region_var.get().strip()
@@ -558,22 +625,20 @@ class Application(ttk.Window):
             unit = unit_var.get().strip()
             console = console_var.get().strip()
             url = url_entry.get().strip()
-            
+
             if not name:
                 messagebox.showerror("Error", "El campo Nombre es obligatorio.")
                 return
             if not url:
                 messagebox.showerror("Error", "El campo URL es obligatorio.")
                 return
-            # Construir el campo size
             size = f"{weight} {unit}" if weight else ""
-            # Consultar la configuración para el campo encrypted
             settings = self.load_settings()
             if settings and settings["decryp"].upper() == "S":
                 encrypted_url = encrypt_url(url)
             else:
                 encrypted_url = url
-            server = "Otros"  # Valor por defecto
+            server = "Otros"
             try:
                 conn = sqlite3.connect("data/data.db")
                 cursor = conn.cursor()
@@ -585,14 +650,14 @@ class Application(ttk.Window):
                 crud_win.destroy()
             except Exception as e:
                 messagebox.showerror("Error", f"Error al insertar el registro: {e}")
-        
+
         ttk.Button(crud_win, text="Guardar", command=insert_record).pack(pady=20)
     
     # ... (los métodos fetch_data, create_composite_image, display_page, on_tree_click, start_download, next_page, prev_page son los mismos que ya están definidos) ...
 
     def next_page(self):
         total_items = len(self.all_files)
-        total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
+        total_pages = math.ceil(total_items / self.page_size) if total_items > 0 else 1
         if self.current_page < total_pages:
             self.current_page += 1
             self.display_page()
