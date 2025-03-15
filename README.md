@@ -49,3 +49,8 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
    pip install -r requirements.txt
 - **3 Ejecuta la aplicación:**
    python app.py
+  
+**GENERAR EJECUTABLE**
+- **Instala:** pyinstaller --onefile script.py
+- **Genera ejecutable:** pyinstaller --onefile --noconsole --icon=icono.ico app.py
+  
