@@ -70,11 +70,10 @@ class Application(ttk.Window):
     def __init__(self):
         super().__init__(themename=current_theme)
         self.title("Backup ROMs Free")
-        self.geometry("900x600")
-        center_window(self, 900, 600)
+        self.geometry("900x605")
+        center_window(self, 900, 605)
         self.resizable(True, True)
         try:
-            # Se utiliza la ruta absoluta para el icono
             icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
             self.iconphoto(False, tk.PhotoImage(file=icon_path))
         except Exception as e:
@@ -192,19 +191,6 @@ class Application(ttk.Window):
                 self.images[key] = ImageTk.PhotoImage(pil_img)
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar las imágenes de región: {e}")
-
-        #self.server_pil = {}
-        #self.server_images = {}
-        #try:
-        #    server_size = (15, 15)
-        #    pil_mega = Image.open(os.path.join("flags", "mega.png")).resize(server_size, Image.Resampling.LANCZOS)
-        #    pil_other = Image.open(os.path.join("flags", "other.png")).resize(server_size, Image.Resampling.LANCZOS)
-        #    self.server_pil["mega"] = pil_mega
-        #    self.server_pil["otros"] = pil_other
-        #    self.server_images["mega"] = ImageTk.PhotoImage(pil_mega)
-        #    self.server_images["otros"] = ImageTk.PhotoImage(pil_other)
-        #except Exception as e:
-        #    messagebox.showerror("Error", f"Error al cargar las imágenes del servidor: {e}")
 
         self.composite_images = {}
 
@@ -342,7 +328,6 @@ class Application(ttk.Window):
                                  "S" if decryp_var.get() else "N",
                                  theme_var.get(),
                                  int(page_var.get()) if page_var.get().isdigit() else 30),
-            messagebox.showinfo("Configuraciones", "Configuración actualizada."),
             settings_win.destroy()
         )).pack(side=tk.LEFT, padx=10)
         ttk.Button(button_frame, text="Cancelar", command=settings_win.destroy).pack(side=tk.LEFT, padx=10)
@@ -461,6 +446,7 @@ class Application(ttk.Window):
             if region_filter != "todos":
                 sql += " AND lower(region)=?"
                 params.append(region_filter)
+            sql += " ORDER BY name ASC"
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             conn.close()
@@ -520,6 +506,143 @@ class Application(ttk.Window):
                 self.start_download(real_url, file_name, server_name)
 
     def start_download(self, url, file_name, server_name):
+        if server_name.upper() == "GOOGLE DRIVE":
+            file_path = os.path.join(self.download_path, file_name)
+            output = file_path
+            id = url
+            try:
+                head_url = "https://drive.google.com/uc?export=download&id=" + id
+                head_response = requests.head(head_url)
+                total = int(head_response.headers.get("content-length", 0))
+            except Exception as e:
+                total = 0
+
+            download_win = tk.Toplevel(self)
+            download_win.title(f"Descargando: {file_name}")
+            download_win.geometry("400x220")
+            center_window(download_win, 400, 220)
+            download_win.resizable(False, False)
+            try:
+                icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
+                download_win.iconphoto(False, tk.PhotoImage(file=icon_path))
+            except Exception as e:
+                pass
+
+            label_file = ttk.Label(download_win, text=f"Archivo: {file_name}")
+            label_file.pack(pady=5)
+
+            progress_var = tk.DoubleVar()
+            progress_bar = ttk.Progressbar(download_win, variable=progress_var, maximum=100)
+            progress_bar.pack(fill=tk.X, padx=20, pady=10)
+
+            label_sizes = ttk.Label(download_win, text="Total: 0 B | Descargado: 0 B | Faltante: 0 B")
+            label_sizes.pack(pady=5)
+
+            label_speed = ttk.Label(download_win, text="Velocidad: 0 KB/s")
+            label_speed.pack(pady=5)
+
+            label_eta = ttk.Label(download_win, text="Tiempo restante: 0 s")
+            label_eta.pack(pady=5)
+
+            cancel_btn = ttk.Button(download_win, text="Cancelar")
+            cancel_btn.pack(pady=5)
+            cancel_flag = [False]
+            def cancel_download():
+                cancel_flag[0] = True
+                messagebox.showinfo("Descarga cancelada", "La descarga ha sido cancelada.")
+                download_win.destroy()
+            cancel_btn.config(command=cancel_download)
+
+            def format_size(b):
+                if b < 1024:
+                    return f"{b} B"
+                elif b < 1024*1024:
+                    return f"{b/1024:.2f} KB"
+                elif b < 1024*1024*1024:
+                    return f"{b/(1024*1024):.2f} MB"
+                else:
+                    return f"{b/(1024*1024*1024):.2f} GB"
+
+            def format_time(seconds):
+                seconds = int(seconds)
+                hours = seconds // 3600
+                minutes = (seconds % 3600) // 60
+                secs = seconds % 60
+                if hours > 0:
+                    return f"{hours}h {minutes}m {secs}s"
+                elif minutes > 0:
+                    return f"{minutes}m {secs}s"
+                else:
+                    return f"{secs}s"
+
+            def update_progress(downloaded, total, speed, remaining):
+                percent = (downloaded / total) * 100 if total else 0
+                progress_var.set(percent)
+                label_sizes.config(text=f"Total: {format_size(total)} | Descargado: {format_size(downloaded)} | Faltante: {format_size(total - downloaded)}")
+                label_speed.config(text=f"Velocidad: {speed/1024:.2f} KB/s")
+                label_eta.config(text=f"Tiempo restante: {format_time(remaining)}")
+
+            def finish_download(success, info):
+                if success:
+                    current_settings = self.load_settings()
+                    if (file_name.lower().endswith('.zip') or file_name.lower().endswith('.rar')) and current_settings and current_settings["unzip"].upper() == "S":
+                        extract_path = os.path.join(self.download_path, os.path.splitext(file_name)[0])
+                        try:
+                            if file_name.lower().endswith('.zip'):
+                                with zipfile.ZipFile(info, 'r') as zip_ref:
+                                    zip_ref.extractall(extract_path)
+                            elif file_name.lower().endswith('.rar'):
+                                import rarfile
+                                with rarfile.RarFile(info, 'r') as rar_ref:
+                                    rar_ref.extractall(extract_path)
+                            messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}\nDescomprimido en:\n{extract_path}")
+                        except Exception as e:
+                            messagebox.showerror("Error al descomprimir", f"Error al descomprimir el archivo: {e}")
+                    else:
+                        if server_name != "Google Drive":
+                            messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}")
+                    try:
+                        conn = sqlite3.connect("data/data.db")
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO history (name) VALUES (?)", (file_name,))
+                        conn.commit()
+                        conn.close()
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Error al insertar en history: {e}")
+                else:
+                    messagebox.showerror("Error en descargar", f"El archivo " + file_name + " no tiene permiso como publico para ser descargado desde Google Drive.")
+                download_win.destroy()
+
+            def perform_gdrive_download():
+                try:
+                    gdown.download(id=id, output=output, quiet=True)
+                except Exception as e:
+                    download_win.after(0, finish_download, False, str(e))
+                if not cancel_flag[0]:
+                    download_win.after(0, finish_download, True, file_path)
+
+            def poll_progress():
+                start_time = time.time()
+                while not cancel_flag[0]:
+                    if os.path.exists(file_path):
+                        downloaded = os.path.getsize(file_path)
+                    else:
+                        downloaded = 0
+                    elapsed = time.time() - start_time
+                    speed = downloaded / elapsed if elapsed > 0 else 0
+                    remaining = (total - downloaded) / speed if speed > 0 else 0
+                    download_win.after(0, update_progress, downloaded, total, speed, remaining)
+                    if total != 0 and downloaded >= total:
+                        break
+                    time.sleep(0.5)
+
+            threading.Thread(target=perform_gdrive_download, daemon=True).start()
+            threading.Thread(target=poll_progress, daemon=True).start()
+            return
+        
+        if server_name.upper() == "NOPAYSTATION":
+            file_name = file_name + ".pkg"
+
         download_win = tk.Toplevel(self)
         download_win.title(f"Descargando: {file_name}")
         download_win.geometry("400x220")
@@ -613,8 +736,6 @@ class Application(ttk.Window):
                     conn.close()
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al insertar en history: {e}")
-            else:
-                messagebox.showerror("Error en descarga", f"Ocurrió un error:\n{info}")
             download_win.destroy()
 
         def perform_download():
@@ -654,7 +775,7 @@ class Application(ttk.Window):
     def prev_page(self):
         if self.current_page > 1:
             self.current_page -= 1
-            self.display_page()    
+            self.display_page()
 
     def open_history_window(self):
         history_win = tk.Toplevel(self)
@@ -710,8 +831,6 @@ class Application(ttk.Window):
                 cursor.execute("DELETE FROM history")
                 conn.commit()
                 conn.close()
-                messagebox.showinfo("Historial", "Historial borrado correctamente.")
-                # Limpiar el Treeview
                 for item in history_tree.get_children():
                     history_tree.delete(item)
             except Exception as e:
