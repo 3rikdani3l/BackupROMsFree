@@ -6,21 +6,33 @@
 
 Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo archivo múltiples URLs recopiladas de diversas páginas de internet. Estas URLs han sido obtenidas mediante técnicas de scraping, facilitando el acceso a enlaces relevantes de manera organizada y eficiente.
 
-## Características
+## Base
 
-- Recopilación automatizada de enlaces mediante scraping. (No liberado)
-- Backups scrapeados:
-   Nintendo Game Cube
-   Nintendo Wii
-   Nintendo Wii U
-   Sony Play Station
-   Sony Play Station 2
-   Sony Play Station 3
-   Sony Play Station Portable
-   Microsoft XBOX
+-  Nintendo Entertainment System
+-  Super Nintendo Entertainment System
+-  Nintendo Game Boy
+-  Nintendo Game Boy Color
+-  Nintendo Game Boy Advance
+-  Nintendo 64
+-  Nintendo DS
+-  Nintendo 3DS
+-  Nintendo Game Cube
+-  Nintendo Wii
+-  Nintendo Wii U
+-  Sega 32X
+-  Sega CD
+-  Sega Game Gear
+-  Sega Master System
+-  Sega Mega Drive - Genesis
+-  Sega Saturn
+-  Sega Dreamcast
+-  Sony Play Station
+-  Sony Play Station 2
+-  Sony Play Station 3
+-  Sony Play Station Portable
+-  Sony Play Station Vita
+-  Microsoft XBOX
    Microsoft XBOX 360
-- Organización y almacenamiento de URLs en un formato accesible. (Liberado)
-- Actualizaciones periódicas para mantener la relevancia de los enlaces.
 
 ## Tecnologías Utilizadas
 
@@ -30,9 +42,10 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 
 ## Instalación
 
-1. Clona este repositorio:
+**WINDOWS**
+- **1 Clona este repositorio:**
    git clone https://github.com/3rikdani3l/BackupROMsFree.git
-3. Instala las dependencias necesarias:
+- **2 Instala las dependencias necesarias:**
    pip install -r requirements.txt
-5. Ejecuta la aplicación:
+- **3 Ejecuta la aplicación:**
    python app.py
