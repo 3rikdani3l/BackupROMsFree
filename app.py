@@ -196,15 +196,17 @@ class Application(ttk.Window):
 
         tree_frame = ttk.Frame(self)
         tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        columns = ("Servidor", "Name", "Size", "Download")
+        columns = ("Servidor", "Type", "Name", "Size", "Download")
         self.tree = ttk.Treeview(tree_frame, columns=columns, show="tree headings")
         self.tree.heading("#0", text="Región")
         self.tree.heading("Servidor", text="Servidor")
+        self.tree.heading("Type", text="Consola")
         self.tree.heading("Name", text="Nombre")
         self.tree.heading("Size", text="Tamaño")
         self.tree.heading("Download", text="Descargar")
         self.tree.column("#0", width=60)
         self.tree.column("Servidor", width=60)
+        self.tree.column("Type", width=70)
         self.tree.column("Name", width=350)
         self.tree.column("Size", width=100)
         self.tree.column("Download", width=50)
@@ -484,7 +486,7 @@ class Application(ttk.Window):
             key = f"{name}_{server_value}"
             self.composite_images[key] = comp_img
             item_id = self.tree.insert("", tk.END, text="", image=comp_img,
-                                       values=(server_value, name, size, "Download"))
+                                       values=(server_value, _type, name, size, "Download"))
             self.item_url_mapping[item_id] = {"url": url, "name": name, "encrypted": encrypted, "server": server_value}
 
         self.page_info_label.config(text=f"Página {self.current_page} de {total_pages}")
@@ -494,7 +496,7 @@ class Application(ttk.Window):
     def on_tree_click(self, event):
         item_id = self.tree.identify_row(event.y)
         column = self.tree.identify_column(event.x)
-        if item_id and column == "#4":
+        if item_id and column == "#5":
             info = self.item_url_mapping.get(item_id)
             if info:
                 if info["encrypted"].upper() == "S":
