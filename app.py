@@ -12,6 +12,8 @@ import zipfile
 from cryptography.fernet import Fernet
 from PIL import Image, ImageTk
 import gdown
+import sys
+import subprocess
 
 def center_window(win, width, height):
     win.update_idletasks()
@@ -73,12 +75,6 @@ class Application(ttk.Window):
         self.geometry("900x605")
         center_window(self, 900, 605)
         self.resizable(True, True)
-        try:
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            self.iconphoto(False, tk.PhotoImage(file=icon_path))
-        except Exception as e:
-            print("No se pudo cargar el icono:", e)
-
         self.download_path = os.path.join(os.getcwd(), "download")
         print(self.download_path)
 
@@ -230,6 +226,69 @@ class Application(ttk.Window):
 
         self.fetch_data()
 
+    def open_herramientas_window(self):
+        # Ventana de Herramientas
+        herramientas_win = tk.Toplevel(self)
+        herramientas_win.title("Herramientas")
+        herramientas_win.geometry("600x400")
+        center_window(herramientas_win, 600, 400)
+        
+        # Dividir verticalmente en 2 partes iguales
+        vertical_paned = ttk.PanedWindow(herramientas_win, orient=tk.VERTICAL)
+        vertical_paned.pack(fill=tk.BOTH, expand=True)
+        
+        # Parte superior: dividir horizontalmente en 2 partes
+        top_frame = ttk.Frame(vertical_paned)
+        horizontal_paned = ttk.PanedWindow(top_frame, orient=tk.HORIZONTAL)
+        horizontal_paned.pack(fill=tk.BOTH, expand=True)
+        
+        # Primera subparte: Microsoft XBOX con botón "Buscar" para archivos .iso
+        left_frame = ttk.Frame(horizontal_paned)
+        ttk.Label(left_frame, text="Microsoft XBOX").pack(pady=5)
+        left_button = ttk.Button(left_frame, text="Buscar", command=self.browse_iso_file)
+        left_button.pack(pady=5)
+        horizontal_paned.add(left_frame, weight=1)
+        
+        # Segunda subparte: Similar a la primera
+        right_frame = ttk.Frame(horizontal_paned)
+        ttk.Label(right_frame, text="Microsoft XBOX").pack(pady=5)
+        right_button = ttk.Button(right_frame, text="Buscar", command=self.browse_iso_file)
+        right_button.pack(pady=5)
+        horizontal_paned.add(right_frame, weight=1)
+        
+        vertical_paned.add(top_frame, weight=1)
+        
+        # Parte inferior: Terminal CMD simulada
+        bottom_frame = ttk.Frame(vertical_paned)
+        vertical_paned.add(bottom_frame, weight=1)
+        
+        from tkinter.scrolledtext import ScrolledText
+        self.terminal_text = ScrolledText(bottom_frame, height=10)
+        self.terminal_text.pack(fill=tk.BOTH, expand=True)
+        
+        self.cmd_entry = ttk.Entry(bottom_frame)
+        self.cmd_entry.pack(fill=tk.X)
+        self.cmd_entry.bind("<Return>", self.execute_cmd)
+    
+    def browse_iso_file(self):
+        # Permite solo archivos con extensión .iso
+        file_path = filedialog.askopenfilename(title="Selecciona un archivo .iso", filetypes=[("ISO files", "*.iso")])
+        if file_path:
+            messagebox.showinfo("Archivo seleccionado", f"Has seleccionado: {file_path}")
+    
+    def execute_cmd(self, event):
+        # Ejecuta el comando ingresado y muestra la salida en la terminal simulada
+        cmd = self.cmd_entry.get()
+        if not cmd.strip():
+            return
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+        except subprocess.CalledProcessError as e:
+            output = e.output
+        self.terminal_text.insert(tk.END, f"> {cmd}\n{output}\n")
+        self.terminal_text.see(tk.END)
+        self.cmd_entry.delete(0, tk.END)
+
     def load_consoles(self):
         try:
             conn = sqlite3.connect("data/data.db")
@@ -276,11 +335,6 @@ class Application(ttk.Window):
         settings_win.geometry("400x350")
         center_window(settings_win, 400, 350)
         settings_win.resizable(False, False)
-        try:
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            settings_win.iconphoto(False, tk.PhotoImage(file=icon_path))
-        except Exception as e:
-            pass
 
         unzip_var = tk.BooleanVar()
         decryp_var = tk.BooleanVar()
@@ -375,11 +429,6 @@ class Application(ttk.Window):
         download_win.geometry("400x200")
         center_window(download_win, 400, 200)
         download_win.resizable(False, False)
-        try:
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            download_win.iconphoto(False, tk.PhotoImage(file=icon_path))
-        except Exception as e:
-            pass
 
         label_file = ttk.Label(download_win, text="Descargando Base de Datos")
         label_file.pack(pady=5)
@@ -524,12 +573,7 @@ class Application(ttk.Window):
             download_win.geometry("400x220")
             center_window(download_win, 400, 220)
             download_win.resizable(False, False)
-            try:
-                icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-                download_win.iconphoto(False, tk.PhotoImage(file=icon_path))
-            except Exception as e:
-                pass
-
+            
             label_file = ttk.Label(download_win, text=f"Archivo: {file_name}")
             label_file.pack(pady=5)
 
@@ -597,12 +641,10 @@ class Application(ttk.Window):
                                 import rarfile
                                 with rarfile.RarFile(info, 'r') as rar_ref:
                                     rar_ref.extractall(extract_path)
-                            messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}\nDescomprimido en:\n{extract_path}")
                         except Exception as e:
                             messagebox.showerror("Error al descomprimir", f"Error al descomprimir el archivo: {e}")
                     else:
-                        if server_name != "Google Drive":
-                            messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}")
+                        messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}")
                     try:
                         conn = sqlite3.connect("data/data.db")
                         cursor = conn.cursor()
@@ -650,11 +692,6 @@ class Application(ttk.Window):
         download_win.geometry("400x220")
         center_window(download_win, 400, 220)
         download_win.resizable(False, False)
-        try:
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            download_win.iconphoto(False, tk.PhotoImage(file=icon_path))
-        except Exception as e:
-            pass
 
         label_file = ttk.Label(download_win, text=f"Archivo: {file_name}")
         label_file.pack(pady=5)
@@ -725,7 +762,6 @@ class Application(ttk.Window):
                             import rarfile
                             with rarfile.RarFile(info, 'r') as rar_ref:
                                 rar_ref.extractall(extract_path)
-                        messagebox.showinfo("Descarga completada", f"Archivo guardado en:\n{info}\nDescomprimido en:\n{extract_path}")
                     except Exception as e:
                         messagebox.showerror("Error al descomprimir", f"Error al descomprimir el archivo: {e}")
                 else:
@@ -738,6 +774,8 @@ class Application(ttk.Window):
                     conn.close()
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al insertar en history: {e}")
+            else:
+                messagebox.showerror("Error en descargar", f"El archivo " + file_name + " no tiene permiso como publico para ser descargado desde Google Drive.")
             download_win.destroy()
 
         def perform_download():
@@ -807,9 +845,6 @@ class Application(ttk.Window):
                     history_tree.insert("", tk.END, values=(file_name, "Disponible"))
                 else:
                     history_tree.insert("", tk.END, values=(file_name, "No disponible"))
-
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            history_win.iconphoto(False, tk.PhotoImage(file=icon_path))
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar el historial: {e}")
 
@@ -820,7 +855,12 @@ class Application(ttk.Window):
                 file_path = os.path.join(self.download_path, archivo)
                 if os.path.exists(file_path):
                     try:
-                        os.startfile(file_path)
+                        if sys.platform.startswith('win'):
+                            os.startfile(file_path)
+                        elif sys.platform.startswith('darwin'):
+                            subprocess.call(('open', file_path))
+                        else:
+                            subprocess.call(('xdg-open', file_path))
                     except Exception as e:
                         messagebox.showerror("Error", f"No se pudo abrir el archivo: {e}")
 
@@ -840,85 +880,6 @@ class Application(ttk.Window):
         
         btn_clear_history = ttk.Button(history_win, text="Borrar Historial", command=clear_history)
         btn_clear_history.pack(pady=10)
-
-    def open_crud_window(self):
-        crud_win = tk.Toplevel(self)
-        crud_win.title("Actualizar BD - Insertar Registro")
-        crud_win.geometry("300x350")
-        center_window(crud_win, 300, 350)
-        crud_win.resizable(False, False)
-        try:
-            icon_path = os.path.join(os.path.dirname(__file__), "flags/icon.png")
-            crud_win.iconphoto(False, tk.PhotoImage(file=icon_path))
-        except Exception as e:
-            pass
-
-        ttk.Label(crud_win, text="Nombre de la rom:").pack(anchor=tk.W, padx=10, pady=5)
-        name_entry = ttk.Entry(crud_win, width=50)
-        name_entry.pack(anchor=tk.W, padx=20)
-
-        ttk.Label(crud_win, text="Región:").pack(anchor=tk.W, padx=10, pady=5)
-        regions = self.load_regions()
-        if "Unknow" not in regions:
-            regions.insert(0, "Unknow")
-        region_var = tk.StringVar(value="Unknow")
-        region_combo = ttk.Combobox(crud_win, textvariable=region_var, values=regions, state="readonly", width=47)
-        region_combo.pack(anchor=tk.W, padx=20)
-
-        weight_frame = ttk.Frame(crud_win)
-        weight_frame.pack(anchor=tk.W, padx=20, pady=5)
-        ttk.Label(weight_frame, text="Peso:").pack(side=tk.LEFT)
-        weight_entry = ttk.Entry(weight_frame, width=20)
-        weight_entry.pack(side=tk.LEFT, padx=5)
-        unit_var = tk.StringVar(value="MiB")
-        unit_combo = ttk.Combobox(weight_frame, textvariable=unit_var, values=["MiB", "GiB"], state="readonly", width=10)
-        unit_combo.pack(side=tk.LEFT)
-
-        ttk.Label(crud_win, text="Consola:").pack(anchor=tk.W, padx=10, pady=5)
-        consoles = self.load_consoles()
-        default_console = consoles[0] if consoles else ""
-        console_var = tk.StringVar(value=default_console)
-        console_combo = ttk.Combobox(crud_win, textvariable=console_var, values=consoles, state="readonly", width=47)
-        console_combo.pack(anchor=tk.W, padx=20)
-
-        ttk.Label(crud_win, text="URL:").pack(anchor=tk.W, padx=10, pady=5)
-        url_entry = ttk.Entry(crud_win, width=50)
-        url_entry.pack(anchor=tk.W, padx=20)
-
-        def insert_record():
-            name = name_entry.get().strip()
-            region = region_var.get().strip()
-            weight = weight_entry.get().strip()
-            unit = unit_var.get().strip()
-            console = console_var.get().strip()
-            url = url_entry.get().strip()
-
-            if not name:
-                messagebox.showerror("Error", "El campo Nombre es obligatorio.")
-                return
-            if not url:
-                messagebox.showerror("Error", "El campo URL es obligatorio.")
-                return
-            size = f"{weight} {unit}" if weight else ""
-            settings = self.load_settings()
-            if settings and settings["decryp"].upper() == "S":
-                encrypted_url = encrypt_url(url)
-            else:
-                encrypted_url = url
-            server = "Otros"
-            try:
-                conn = sqlite3.connect("data/data.db")
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO files (name, region, size, type, url, encrypted, server) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                               (name, region, size, console, encrypted_url, settings["decryp"] if settings else "N", server))
-                conn.commit()
-                conn.close()
-                messagebox.showinfo("BD", "Registro insertado correctamente.")
-                crud_win.destroy()
-            except Exception as e:
-                messagebox.showerror("Error", f"Error al insertar el registro: {e}")
-
-        ttk.Button(crud_win, text="Guardar", command=insert_record).pack(pady=20)
 
     def next_page(self):
         total_items = len(self.all_files)
