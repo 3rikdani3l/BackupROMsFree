@@ -1,6 +1,7 @@
 # Backup ROMs Free
 
-**Nota Importante:** Este repositorio no aloja ningún backup de consolas de juegos. Todos los enlaces se han obtenido mediante un proceso de scraping utilizando diversas técnicas con Python y Chat GPT.
+**Nota Importante:** 
+> Este repositorio no aloja ningún backup de consolas de juegos. Todos los enlaces se han obtenido mediante un proceso de scraping utilizando diversas técnicas con Python y Chat GPT.
 
 ## Descripción
 
