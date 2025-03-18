@@ -49,11 +49,24 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
    ```
    
 - **2 Instala las dependencias necesarias:**
-   pip install -r requirements.txt
+  ```powershell
+  pip install -r requirements.txt
+  ```
+   
 - **3 Ejecuta la aplicación:**
-   python app.py
-  
+  ```powershell
+  python app.py
+  ```
+   
 **GENERAR EJECUTABLE**
-- **Instala:** pyinstaller --onefile app.py
-- **Genera ejecutable:** pyinstaller --onefile --noconsole --icon=icono.ico app.py
+- **Instala:**
+  ```powershell
+  pyinstaller --onefile app.py
+  ```
+  
+- **Genera ejecutable:**
+  ```powershell
+  pyinstaller --onefile --noconsole --icon=icono.ico app.py
+  ```
+  
   
