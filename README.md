@@ -44,7 +44,10 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 
 **WINDOWS**
 - **1 Clona este repositorio:**
+  ```powershell
    git clone https://github.com/3rikdani3l/BackupROMsFree.git
+   ```
+   
 - **2 Instala las dependencias necesarias:**
    pip install -r requirements.txt
 - **3 Ejecuta la aplicación:**
