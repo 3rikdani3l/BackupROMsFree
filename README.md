@@ -11,31 +11,30 @@ Backup ROMs Free es un proyecto que tiene como objetivo centralizar en un solo a
 | Consolas | 
 |---------|
 Nintendo Entertainment System | 
-
--  Super Nintendo Entertainment System
--  Nintendo Game Boy
--  Nintendo Game Boy Color
--  Nintendo Game Boy Advance
--  Nintendo 64
--  Nintendo DS
--  Nintendo 3DS
--  Nintendo Game Cube
--  Nintendo Wii
--  Nintendo Wii U
--  Sega 32X
--  Sega CD
--  Sega Game Gear
--  Sega Master System
--  Sega Mega Drive - Genesis
--  Sega Saturn
--  Sega Dreamcast
--  Sony Play Station
--  Sony Play Station 2
--  Sony Play Station 3
--  Sony Play Station Portable
--  Sony Play Station Vita
--  Microsoft XBOX
-   Microsoft XBOX 360
+Super Nintendo Entertainment System |
+Nintendo Game Boy |
+Nintendo Game Boy Color |
+Nintendo Game Boy Advance |
+Nintendo 64 |
+Nintendo DS |
+Nintendo 3DS |
+Nintendo Game Cube |
+Nintendo Wii |
+Nintendo Wii U |
+Sega 32X |
+Sega CD |
+Sega Game Gear |
+Sega Master System |
+Sega Mega Drive - Genesis |
+Sega Saturn |
+Sega Dreamcast |
+Sony Play Station |
+Sony Play Station 2 |
+Sony Play Station 3 |
+Sony Play Station Portable |
+Sony Play Station Vita |
+Microsoft XBOX |
+Microsoft XBOX 360 |
 
 ## Tecnologías Utilizadas
 
