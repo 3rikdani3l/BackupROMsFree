@@ -331,8 +331,8 @@ class Application(ttk.Window):
     def open_settings_window(self):
         settings_win = tk.Toplevel(self)
         settings_win.title("Configuraciones")
-        settings_win.geometry("400x350")
-        center_window(settings_win, 400, 350)
+        settings_win.geometry("400x340")
+        center_window(settings_win, 400, 340)
         settings_win.resizable(False, False)
 
         unzip_var = tk.BooleanVar()
@@ -376,7 +376,7 @@ class Application(ttk.Window):
         ttk.Entry(settings_win, textvariable=page_var, width=70, validate="key", validatecommand=vcmd).pack(anchor=tk.W, padx=20)
 
         button_frame = ttk.Frame(settings_win)
-        button_frame.pack(pady=30)
+        button_frame.pack(pady=10)
         ttk.Button(button_frame, text="Guardar", command=lambda: (
             self.update_settings("S" if unzip_var.get() else "N",
                                  path_var.get().strip() if path_var.get().strip() != "" else os.path.join(os.getcwd(), "download"),
@@ -384,8 +384,8 @@ class Application(ttk.Window):
                                  theme_var.get(),
                                  int(page_var.get()) if page_var.get().isdigit() else 30),
             settings_win.destroy()
-        )).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="Cancelar", command=settings_win.destroy).pack(side=tk.LEFT, padx=10)
+        )).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancelar", command=settings_win.destroy).pack(side=tk.LEFT, padx=5)
 
     def load_settings(self):
         try:
